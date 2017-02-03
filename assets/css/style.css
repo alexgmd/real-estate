@@ -1,5 +1,31 @@
+body, head {
+    font-family: 'Montserrat', sans-serif;
+}
+
 body {
     background: #34495e;
     color: white;
     padding: 50px;
 }
+
+.main-userform {
+    max-width: 300px;
+    margin: 15px auto;
+    padding: 5px;
+}
+
+.main-userform p {
+    text-align: center;
+}
+
+.main-userform button, .main-userform input {
+    box-sizing: border-box;
+    width: 100%;
+    background: #fff;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    color: #555;
+    font-family: 'Montserrat', sans-serif;
+}
+
