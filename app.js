@@ -12,15 +12,13 @@ app.set( 'view engine', 'ejs' );
 //setting the 'assets' directory as our static assets dir (css, js, img, etc...)
 app.use( '/assets', express.static( 'assets' ) );
 
-
-function callleboncoin(){
-    var url = 'https://www.leboncoin.fr/ventes_immobilieres/1086696284.htm?ca=12_s'
-
-    request(url,function(error,response,html){           
-    //console.log(response.statusCode);
+// faire modules ...
+function callleboncoin(lbcurl,receivedLBCData){
+    //var url = 'https://www.leboncoin.fr/ventes_immobilieres/1058817150.htm?ca=12_s'
+    
+    request(lbcurl,function(error,response,html){ 
 
         if(!error && response.statusCode == 200){
-
 
             const $ = cheerio.load( html )
 
@@ -32,18 +30,8 @@ function callleboncoin(){
                 type: $(lbcDataArray.get(2)).text().trim().toLowerCase(),
                 surface: parseInt($(lbcDataArray.get(4)).text().replace(/\s/g,''),10)
             }
-            // Display the data of the real-estate ad of lbc
-            console.log(lbcData);
 
-            // Estimation of the price by m²
-            estimation(lbcData.price,lbcData.surface);
-
-            
-            //console.log($('h2.item_price span.value').text()); // show the text of the item
-            //console.log($('h2 span[itemprop="address"]').text()); // show the text of the item
-            //console.log($('h2.clearfix span.value').text()); // show the text of the item
-            
-            //console.log(lbcData.surface);
+            receivedLBCData(lbcData)
         }
         else{
             console.log(error);
@@ -51,26 +39,25 @@ function callleboncoin(){
     })
 }
 
-function callmeilleursagents(){
-    var url = 'https://www.meilleursagents.com/prix-immobilier/paris-75000/'
+function callmeilleursagents(lbcData,callback){
+    var url = 'https://www.meilleursagents.com/prix-immobilier/'+lbcData.city;
 
-    request(url,function(error,response,html){           
-    //console.log(response.statusCode);
+    request(url,function(error,response,html){
 
         if(!error && response.statusCode == 200){
 
-
+            
             const $ = cheerio.load( html )
 
-            const lbcDataArray = $('div.prices-summary div.prices-summary__cell--median');
+            const maDataArray = $('div.prices-summary div.prices-summary__cell--median');
 
-            let lbcData={
-                priceAppart: parseInt($(lbcDataArray.get(0)).text().replace(/\s/g,''),10),
-                priceHouse: parseInt($(lbcDataArray.get(1)).text().replace(/\s/g,''),10),
-                priceRent: parseInt($(lbcDataArray.get(2)).text().replace(/\s/g,''),10)
+            let maData={
+                priceAppart: parseInt($(maDataArray.get(0)).text().replace(/\s/g,''),10),
+                priceHouse: parseInt($(maDataArray.get(1)).text().replace(/\s/g,''),10),
+                priceRent: parseFloat($(maDataArray.get(2)).text().replace(/\s/g,''),10)
             }
-            // Display the data of the real-estate ad of lbc
-            console.log(lbcData);
+
+            callback(lbcData, maData);
         }
         else{
             console.log(error);
@@ -78,23 +65,59 @@ function callmeilleursagents(){
     })
 }
 
-
-function estimation(price, surface){
-    let estimate = {
-        priceByM: parseFloat((price/surface).toFixed(2))
-    }
-    console.log(estimate);
-}
-
-
 //makes the server respond to the '/' route and serving the 'home.ejs' template in the 'views' directory
 app.get( '/', function ( req, res ) {
-    callleboncoin();
-    callmeilleursagents();
-
     res.render( 'home', {
-        message: 'The Home Page!',
-        test: 'test'
+        message: 'Faites le test !'
+    });
+});
+
+//makes the server respond to the '/result' route and serving the 'result.ejs' template in the 'views' directory
+app.get( '/result', function ( req, res ) {
+    var lbcurl = req.query.urlLBC;
+
+    if (lbcurl == undefined) {
+        lbcurl = '';
+    }
+    
+    callleboncoin( lbcurl, function ( lbcData ) {
+        callmeilleursagents( lbcData, function(lbcdata, maData) {
+            var message = '';
+            var mean = 0;
+
+            console.log(lbcData);
+            console.log(maData);
+            if (lbcData.type == 'appartement') {
+                if (lbcData.price/lbcData.surface == maData.priceAppart) {
+                    message = 'Le bien présenté dans l\'annonce est au prix marché moyen de la région.';
+                } else if (lbcData.price/lbcData.surface < maData.priceAppart) {
+                    message = 'Le bien présenté dans l\'annonce est en dessous du prix marché moyen, c\'est une bonne affaire !';
+                }else if (lbcData.price/lbcData.surface > maData.priceAppart) {
+                    message = 'Le bien présenté dans l\'annonce est au dessus du prix marché moyen, ce n\'est pas une bonne affaire !';
+                }
+                mean = maData.priceAppart; 
+            } else if (lbcData.type == 'maison') {
+                if ((lbcData.price/lbcData.surface).toFixed(2) == maData.priceHouse) {
+                    message = 'Le bien présenté dans l\'annonce est au prix marché moyen de la région.';
+                }else if ((lbcData.price/lbcData.surface).toFixed(2) < maData.priceHouse) {
+                    message = 'Le bien présenté dans l\'annonce est en dessous du prix marché moyen, c\'est une bonne affaire !';
+                }else if ((lbcData.price/lbcData.surface).toFixed(2) > maData.priceHouse) {
+                    message = 'Le bien présenté dans l\'annonce est au dessus du prix marché moyen, ce n\'est pas une bonne affaire !';
+                }
+                mean = maData.priceHouse; 
+            }
+            // rajouter conditions avec prix le plus bas et plus haut...
+
+            console.log(message);
+
+            res.render( 'result', {
+                result: message,
+                typeBien: lbcData.type,
+                pricem2: (lbcData.price/lbcData.surface).toFixed(2),
+                meanprice: mean,
+                city: lbcData.city
+            });
+        });
     });
 });
 

@@ -6,19 +6,30 @@
     <title>Home</title>
     <link rel="stylesheet" href="/assets/css/style.css" />
     <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 </head>
 
 <body>
-    <p>Welcome to
-        <%= message %>
-    </p>
-    <div class="main-userform">
-        <div>
-            <p>Enter the url of the real-estate ad</p>
-            <input type="url" placeholder="url"/>
-            <button type="submit">OK</button>
-        </div>
+
+    <div class="header-principal">
+        <h1>Workshop</h1>
+        <h2>Determine if the price of a real estate on leboncoin.fr classified ad is a good deal</h2>
     </div>
+
+    <div class="container">
+        <p> <%= message %> </p> 
+        <form class="form-inline" action="/result" method="GET">
+            <div class="form-group">
+                <label>URL Leboncoin</label>
+                <input type="text" class="form-control" name="urlLBC" placeholder="url"/>
+            </div>
+            <button type="submit" class="btn btn-info"> Submit</button>
+        </form>
+    </div>
+
+        
+
+   
 </body>
 
 </html>

@@ -1,31 +1,15 @@
-body, head {
-    font-family: 'Montserrat', sans-serif;
+.header-principal{
+    /*max-width: 100%;
+    margin: 50px auto;
+    padding: 20px;*/
+height:200px;
+background-color: lightslategrey;
+margin-bottom:30px;
+padding: 25px ;
 }
 
-body {
-    background: #34495e;
+.header-principal h1, .header-principal h2{
     color: white;
-    padding: 50px;
+    text-align: center!important;
+    font-family: 'Montserrat';
 }
-
-.main-userform {
-    max-width: 300px;
-    margin: 15px auto;
-    padding: 5px;
-}
-
-.main-userform p {
-    text-align: center;
-}
-
-.main-userform button, .main-userform input {
-    box-sizing: border-box;
-    width: 100%;
-    background: #fff;
-    margin-bottom: 10px;
-    border: 1px solid #ccc;
-    padding: 10px;
-    color: #555;
-    font-family: 'Montserrat', sans-serif;
-}
-
