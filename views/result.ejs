@@ -4,14 +4,23 @@
 <head>
     <title>Result</title>
     <link rel="stylesheet" href="/assets/css/style.css" />
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:300" rel="stylesheet">
 </head>
 
 <body>
-    <p> <%= result %> </p>        
-    <p> Type : <%= typeBien %> </p>
-    <p> Price by m² : <%= pricem2 %> </p>
-    <p> City : <%= city %> </p>
-    <p> Average price : <%= meanprice %> </p>
+    
+    <div class="result-request">
+        <p> <%= result %> </p> </br>       
+        <p> Type : <%= typeBien %> </p>
+        <p> Prix par m² : <%= pricem2 %> €</p>
+        <p> Ville : <%= city %> </p>
+        <p> Prix marché moyen : <%= meanprice %> €</p>
+        <p> Prix m² haut : <%= highprice %> €</p>
+        <p> Prix m² bas : <%= lowprice %> €</p></br>
+        <form>
+            <button value="Retour" onclick="history.go(-1)">Retour</button>
+        </form>
+    </div>
 </body>
 
 </html>

@@ -12,9 +12,8 @@ app.set( 'view engine', 'ejs' );
 //setting the 'assets' directory as our static assets dir (css, js, img, etc...)
 app.use( '/assets', express.static( 'assets' ) );
 
-// faire modules ...
+
 function callleboncoin(lbcurl,receivedLBCData){
-    //var url = 'https://www.leboncoin.fr/ventes_immobilieres/1058817150.htm?ca=12_s'
     
     request(lbcurl,function(error,response,html){ 
 
@@ -23,13 +22,21 @@ function callleboncoin(lbcurl,receivedLBCData){
             const $ = cheerio.load( html )
 
             const lbcDataArray = $('section.properties span.value');
+            const properties = $('span.property');
 
-            let lbcData={
-                price: parseInt($(lbcDataArray.get(0)).text().replace(/\s/g,''),10),
-                city: $(lbcDataArray.get(1)).text().trim().toLowerCase().replace(/\_|\s/g,'-'),
-                type: $(lbcDataArray.get(2)).text().trim().toLowerCase(),
-                surface: parseInt($(lbcDataArray.get(4)).text().replace(/\s/g,''),10)
-            }
+            let lbcData = [];
+            for (var i = 0; i < properties.length; i++) {
+                var label = $(properties[i]).text().trim();
+                if(label.includes("Prix"))
+                    lbcData.price = parseInt($(lbcDataArray.get(i)).text().replace(/\s/g, ''), 10);
+                if(label.includes("Ville"))
+                    //Améliorations: accents, apostrophes...
+                    lbcData.city = $(lbcDataArray.get(i)).text().trim().toLowerCase().replace(/\_|\s/g, '-');
+                if(label.includes("Type"))
+                    lbcData.type = $(lbcDataArray.get(i)).text().trim().toLowerCase();
+                if(label.includes("Surface"))
+                    lbcData.surface = parseInt($(lbcDataArray.get(i)).text().replace(/\s/g, ''), 10);
+            };
 
             receivedLBCData(lbcData)
         }
@@ -39,8 +46,17 @@ function callleboncoin(lbcurl,receivedLBCData){
     })
 }
 
-function callmeilleursagents(lbcData,callback){
-    var url = 'https://www.meilleursagents.com/prix-immobilier/'+lbcData.city;
+function callmeilleursagents(lbcData,receivedMAData){
+
+    var url ='';
+    //A améliorer: prendre en compte les arrondissements
+    if((lbcData.city).includes('paris')){
+        url = 'https://www.meilleursagents.com/prix-immobilier/paris-75000'
+    }else if((lbcData.city).includes('lyon')){
+        url = 'https://www.meilleursagents.com/prix-immobilier/lyon-69000'
+    }else{
+        url = 'https://www.meilleursagents.com/prix-immobilier/'+lbcData.city;
+    }
 
     request(url,function(error,response,html){
 
@@ -49,15 +65,19 @@ function callmeilleursagents(lbcData,callback){
             
             const $ = cheerio.load( html )
 
-            const maDataArray = $('div.prices-summary div.prices-summary__cell--median');
+            const maMedianDataArray = $('div.prices-summary div.prices-summary__cell--median');
+            const maLimitsDataArray = $('div.prices-summary div.prices-summary__cell--muted');
 
             let maData={
-                priceAppart: parseInt($(maDataArray.get(0)).text().replace(/\s/g,''),10),
-                priceHouse: parseInt($(maDataArray.get(1)).text().replace(/\s/g,''),10),
-                priceRent: parseFloat($(maDataArray.get(2)).text().replace(/\s/g,''),10)
+                priceMedianAppart: parseInt($(maMedianDataArray.get(0)).text().replace(/\s/g,''),10),
+                priceLowAppart: parseInt($(maLimitsDataArray.get(0)).text().replace(/\s/g, ''), 10),
+                priceHighAppart: parseInt($(maLimitsDataArray.get(1)).text().replace(/\s/g, ''), 10),
+                priceMedianHouse: parseInt($(maMedianDataArray.get(1)).text().replace(/\s/g,''),10),
+                priceLowHouse: parseInt($(maLimitsDataArray.get(2)).text().replace(/\s/g, ''), 10),
+                priceHighHouse: parseInt($(maLimitsDataArray.get(3)).text().replace(/\s/g, ''), 10),
             }
 
-            callback(lbcData, maData);
+            receivedMAData(lbcData, maData);
         }
         else{
             console.log(error);
@@ -84,29 +104,36 @@ app.get( '/result', function ( req, res ) {
         callmeilleursagents( lbcData, function(lbcdata, maData) {
             var message = '';
             var mean = 0;
+            var high = 0;
+            var low = 0;
 
             console.log(lbcData);
             console.log(maData);
             if (lbcData.type == 'appartement') {
-                if (lbcData.price/lbcData.surface == maData.priceAppart) {
+                if (lbcData.price/lbcData.surface == maData.priceMedianAppart) {
                     message = 'Le bien présenté dans l\'annonce est au prix marché moyen de la région.';
-                } else if (lbcData.price/lbcData.surface < maData.priceAppart) {
+                } else if (lbcData.price/lbcData.surface < maData.priceMedianAppart) {
                     message = 'Le bien présenté dans l\'annonce est en dessous du prix marché moyen, c\'est une bonne affaire !';
-                }else if (lbcData.price/lbcData.surface > maData.priceAppart) {
+                }else if (lbcData.price/lbcData.surface > maData.priceMedianAppart) {
                     message = 'Le bien présenté dans l\'annonce est au dessus du prix marché moyen, ce n\'est pas une bonne affaire !';
                 }
-                mean = maData.priceAppart; 
+                //details
+                mean = maData.priceMedianAppart; 
+                high = maData.priceHighAppart; 
+                low = maData.priceLowAppart; 
             } else if (lbcData.type == 'maison') {
-                if ((lbcData.price/lbcData.surface).toFixed(2) == maData.priceHouse) {
+                if ((lbcData.price/lbcData.surface).toFixed(2) == maData.priceMedianHouse) {
                     message = 'Le bien présenté dans l\'annonce est au prix marché moyen de la région.';
-                }else if ((lbcData.price/lbcData.surface).toFixed(2) < maData.priceHouse) {
+                }else if ((lbcData.price/lbcData.surface).toFixed(2) < maData.priceMedianHouse) {
                     message = 'Le bien présenté dans l\'annonce est en dessous du prix marché moyen, c\'est une bonne affaire !';
-                }else if ((lbcData.price/lbcData.surface).toFixed(2) > maData.priceHouse) {
+                }else if ((lbcData.price/lbcData.surface).toFixed(2) > maData.priceMedianHouse) {
                     message = 'Le bien présenté dans l\'annonce est au dessus du prix marché moyen, ce n\'est pas une bonne affaire !';
                 }
-                mean = maData.priceHouse; 
+                //details
+                mean = maData.priceMedianHouse; 
+                high = maData.priceHighHouse; 
+                low = maData.priceLowHouse; 
             }
-            // rajouter conditions avec prix le plus bas et plus haut...
 
             console.log(message);
 
@@ -115,7 +142,9 @@ app.get( '/result', function ( req, res ) {
                 typeBien: lbcData.type,
                 pricem2: (lbcData.price/lbcData.surface).toFixed(2),
                 meanprice: mean,
-                city: lbcData.city
+                city: lbcData.city,
+                highprice: high,
+                lowprice: low
             });
         });
     });
